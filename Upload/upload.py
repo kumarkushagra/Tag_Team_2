@@ -228,7 +228,7 @@ def Upload_Batch(batch_dir_path, anonymize_flag, User_CSV_path,batch_no):
             uploaded_studyID = find_new_element(old_studies,anonymized_studies)
 
         # New name for anonymized function
-        new_name = "Normal" + str(counter)
+        new_name = "Normal_" + str(counter)
         counter+=1
 
 
