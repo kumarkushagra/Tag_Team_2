@@ -53,8 +53,10 @@ def rename_patient(study_id, new_name):
         update_url = f"{url}/patients/{patient_id}/modify"
         payload = {
             "Replace": {
+                "PatientID" : patient_id,
                 "PatientName": new_name
-            }
+            },
+            'Force':True
         }
 
         ols_studies = requests.get(f"{url}/studies").json()
@@ -69,7 +71,7 @@ def rename_patient(study_id, new_name):
         renamed_studyID = find_new_element(ols_studies,new_studies)
         
         # deleting previous study 
-        delete_studies([study_id])
+        # delete_studies([study_id])
 
         return renamed_studyID
 

@@ -36,35 +36,20 @@ async def read_upload():
 async def handle_upload(
     dir_path: str = Form(...),
     # target_dir: str = Form(...),
-    csv_file: UploadFile = File(...),
+    # csv_file: UploadFile = File(...),
     # anonymization_flag: Optional[bool] = Form(False),
     batch_size: int = Form(...)
 ):
+    csv_file_path = "Final.csv"
     anonymization_flag=True
-    target_dir="Batch"
-    # Define the temporary path for the uploaded file
-    temp_csv_path = f"temp_{csv_file.filename}"
-    processed_csv_path = f"processed_{csv_file.filename}"   
-
-    # Save the uploaded file to the temporary path
-    with open(temp_csv_path, "wb") as buffer:
-        shutil.copyfileobj(csv_file.file, buffer)
 
     # Call the Upload function (assuming it's defined elsewhere)
-    Upload(dir_path, anonymization_flag, target_dir, temp_csv_path, batch_size)
-
-    # Read the processed CSV file
-    my_csv = pd.read_csv(temp_csv_path)
-
-    # Save the processed CSV file to a new file
-    my_csv.to_csv(processed_csv_path, index=False)
-
-    # Clean up the temporary file
-    os.remove(temp_csv_path)
+    Upload(dir_path, anonymization_flag, csv_file_path, batch_size)
 
     # Return the processed CSV file as a response for download
-    return FileResponse(processed_csv_path, media_type='text/csv', filename=csv_file.filename)
- 
+    with open("static/Download.html") as f:
+        return HTMLResponse(content=f.read(), media_type="text/html")
+
         
 @app.get("/download", response_class=HTMLResponse)
 async def read_download():

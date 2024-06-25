@@ -112,38 +112,43 @@ def create_subdirectory(parent_path, subdirectory_name):
 
 
 def latest_batch_number():
-    csv_path = 'Database/Mapping.csv'
+    csv_file_path = 'Database/Mapping.csv'
 
     try:
-        # Load the CSV file into a DataFrame
-        dataframe = pd.read_csv(csv_path)
-        
-        # Ensure 'date' column is in datetime format for accurate sorting
-        dataframe['date'] = pd.to_datetime(dataframe['date'])
-        
-        # Sort the DataFrame by 'date' column in descending order
-        sorted_df = dataframe.sort_values(by='date', ascending=False)
-        
-        # Get the latest value of 'batch_no'
-        latest_batch_name = sorted_df.iloc[0]['batch_no']
-        
-        # Extract batch number from the latest batch name
-        try:
-            batch_number = int(latest_batch_name.split('Batch')[1].strip())
-        except Exception as e:
-            print(f"Error extracting batch number: {e}")
-            batch_number = 0  # Return 0 in case of extraction error
-        
-        return batch_number
+        # Open the CSV file
+        with open(csv_file_path, mode='r') as file:
+            reader = csv.DictReader(file)
+            
+            # Initialize variables to track the latest batch and time
+            latest_time = datetime.datetime.min
+            latest_batch = None
+            
+            # Flag to check if there are any data rows
+            has_data = False
+            
+            for row in reader:
+                has_data = True
+                # Combine date and time into a single datetime object
+                timestamp = f"{row['date']} {row['Time']}"
+                current_time = latest_time.strptime(timestamp, "%Y-%m-%d %H:%M:%S.%f")
+                
+                # Compare current time with the latest time
+                if current_time > latest_time:
+                    latest_time = current_time
+                    latest_batch = row['batch_no']
+            
+            # If there were no data rows, return 0
+            if not has_data:
+                return 0
+            
+            # Extract the integer part of the batch number
+            latest_batch_number = int(''.join(filter(str.isdigit, latest_batch)))
+            
+            return latest_batch_number
     
-    except Exception as e:
-        print(f"Error loading or processing CSV file: {e}")
-        return 0  # Return 0 if there's any error loading or processing the CSV file
-
-    
-    except Exception as e:
-        print(f"Error loading or processing CSV file: {e}")
-        return 0  # Return 0 if there's any error loading or processing the CSV file
+    except FileNotFoundError:
+        # Return 0 if the file is not found
+        return 0
 
 
 
@@ -164,14 +169,14 @@ def copy_directories_to_Batch_dir(target_dir, directory_paths_array):
             target_path = os.path.join(target_dir, dir_name)
 
             # Check if the directory already exists in the target location
-            if os.path.exists(target_path):
-                print(f"Directory '{dir_name}' already exists in the target directory.")
-            else:
-                try:
-                    shutil.copytree(dir_path, target_path)
-                    print(f"Directory '{dir_name}' successfully copied to '{target_dir}'.")
-                except Exception as e:
-                    print(f"Failed to copy directory '{dir_name}': {str(e)}")
+            # if os.path.exists(target_path):
+            #     print(f"Directory '{dir_name}' already exists in the target directory.")
+        
+            try:
+                shutil.copytree(dir_path, target_path)
+                print(f"Directory '{dir_name}' successfully copied to '{target_dir}'.")
+            except Exception as e:
+                print(f"Failed to copy directory '{dir_name}': {str(e)}")
         else:
             print(f"Directory '{dir_path}' does not exist or is not a valid directory.")
 
@@ -454,9 +459,12 @@ def rename_patient(study_id, new_name):
 
         update_url = f"{url}/patients/{patient_id}/modify"
         payload = {
+            #'Keep' : [ 'SOPInstanceUID' ],
             "Replace": {
+                "PatientID" : patient_id,
                 "PatientName": new_name
-            }
+            },
+            'Force':True
         }
 
         ols_studies = requests.get(f"{url}/studies").json()
@@ -473,14 +481,18 @@ def rename_patient(study_id, new_name):
         # deleting previous study 
         delete_studies([study_id])
 
-        return renamed_studyID
 
         if response.status_code == 200:
             print(f"Patient name successfully updated to {new_name}")
+            return renamed_studyID
+
         else:
             print(f"Failed to update patient name. Status code: {response.status_code}")
+            return renamed_studyID
+
     else:
         print(f"No study found or error fetching data for study_id: {study_id}")
+        return renamed_studyID
 
 
 def list_subdirectories(parent_directory):
@@ -495,7 +507,7 @@ def list_subdirectories(parent_directory):
     return subdirectories
 
 
-def Upload(unzip_dir,anonymize_flag, target_dir,csv_file_path,batch_size):
+def Upload(unzip_dir,anonymize_flag, csv_file_path,batch_size):
     UHIDs = return_uhid_array(csv_file_path, batch_size, "LLM", 0,"Uploaded", 0, "Patient ID (UHID)")
     # print(UHIDs)
     batch_number = latest_batch_number()
@@ -509,6 +521,7 @@ def Upload(unzip_dir,anonymize_flag, target_dir,csv_file_path,batch_size):
 
     # Full path of BATCH0X i.e. just created 
     target_dir ="Contains_Batches/"+  batch_Name 
+    print(target_dir)
     if not os.path.exists(target_dir):
         # Create a new directory because it does not exist
         os.makedirs(target_dir)
@@ -518,6 +531,7 @@ def Upload(unzip_dir,anonymize_flag, target_dir,csv_file_path,batch_size):
 
 
     # Uploading Entire Batch
+
     Upload_Batch(target_dir, anonymize_flag, csv_file_path,batch_Name)
 
 if __name__=="__main__":
